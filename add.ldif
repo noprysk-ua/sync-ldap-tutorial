@@ -1,0 +1,4 @@
+dn: cn=engineers,dc=example,dc=org
+changetype: modify
+add: memberuid
+memberuid: peter

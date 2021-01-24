@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+#
+# This tutorial shows how to run the `sdb-admin sync-ldap` within a minimal required environment.
+#
+# Make sure you have installed
+# - tools
+# - ldaputils
+# - docker
+
+# setup a minimalistic cluster
+sdb-deploy cluster-in-a-box --force-package-format deb --password p
+
+# setup minimalistic LDAP
+docker run -p 389:389 -p 636:636 --name my-openldap-container --detach osixia/openldap:1.4.0
+
+# make sure that it runs just fine
+ldapsearch -x -H ldap://localhost -b dc=example,dc=org -D "cn=admin,dc=example,dc=org" -w admin
+
+# create an LDAP user
+ldapadd -x -H ldap://localhost -D "cn=admin,dc=example,dc=org" -w admin -f user.ldif
+
+# create an LDAP group
+ldapadd -x -H ldap://localhost -D "cn=admin,dc=example,dc=org" -w admin -f group.ldif
+
+# add peter to engineers
+ldapmodify -x -H ldap://localhost -D "cn=admin,dc=example,dc=org" -w admin -f add.ldif
+
+# check that there is now peter who belongs to engineers
+ldapsearch -x -H ldap://localhost -b dc=example,dc=org -D "cn=admin,dc=example,dc=org" -w admin
+
+# perform the sync itself
+sdb-admin sync-ldap --uris ldap://localhost --groups engineers --search-base dc=example,dc=org --schema open-ldap --auth-method kerberos  --show-detail --bind-user cn=admin,dc=example,dc=org --bind-credentials admin
+
+# check that all is fine
+sdb-admin query --sql "show users" --host localhost --password p
+sdb-admin query --sql "show groups for user 'peter'@'%'" --host localhost --password p
+
+# cleanup
+docker container stop my-openldap-container
+docker container rm my-openldap-container
+sdb-deploy destroy-cluster --force-package-format deb
