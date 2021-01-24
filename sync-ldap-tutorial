@@ -7,11 +7,16 @@
 # - ldaputils
 # - docker
 
+set -x
+
 # setup a minimalistic cluster
 sdb-deploy cluster-in-a-box --force-package-format deb --password p
 
 # setup minimalistic LDAP
 docker run -p 389:389 -p 636:636 --name my-openldap-container --detach osixia/openldap:1.4.0
+
+echo "Should add a bit to spin the server..."
+sleep 10
 
 # make sure that it runs just fine
 ldapsearch -x -H ldap://localhost -b dc=example,dc=org -D "cn=admin,dc=example,dc=org" -w admin
